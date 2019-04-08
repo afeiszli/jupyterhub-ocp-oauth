@@ -6,6 +6,9 @@ import os
 import json
 import requests
 
+from oauthenticator.azuread import AzureAdOAuthenticator
+
+
 c.JupyterHub.log_level = 'DEBUG'
 # Do not shut down singleuser servers on restart
 c.JupyterHub.cleanup_servers = False
@@ -95,8 +98,8 @@ with requests.Session() as session:
 
 os.environ['OPENSHIFT_URL'] = 'https://%s' % address
 
-from oauthenticator.openshift import OpenShiftOAuthenticator
-c.JupyterHub.authenticator_class = OpenShiftOAuthenticator
+#from oauthenticator.openshift import OpenShiftOAuthenticator
+#c.JupyterHub.authenticator_class = OpenShiftOAuthenticator
 
 # Override scope as oauthenticator code doesn't set it correctly.
 # Need to lodge a PR against oauthenticator to have this fixed.
@@ -115,12 +118,12 @@ with open(os.path.join(service_account_path, 'namespace')) as fp:
 
 client_id = 'system:serviceaccount:%s:%s' % (namespace, service_account_name)
 
-c.OpenShiftOAuthenticator.client_id = client_id
+#c.OpenShiftOAuthenticator.client_id = client_id
 
 with open(os.path.join(service_account_path, 'token')) as fp:
     client_secret = fp.read().strip()
 
-c.OpenShiftOAuthenticator.client_secret = client_secret
+#c.OpenShiftOAuthenticator.client_secret = client_secret
 
 # Work out hostname for the exposed route of the JupyterHub server. This
 # is tricky as we need to use the REST API to query it.
@@ -144,7 +147,7 @@ for route in route_list.items:
 if not host:
     raise RuntimeError('Cannot calculate external host name for JupyterHub.')
 
-c.OpenShiftOAuthenticator.oauth_callback_url = 'https://%s/hub/oauth_callback' % host
+#c.OpenShiftOAuthenticator.oauth_callback_url = 'https://%s/hub/oauth_callback' % host
 
 from jupyterhub_singleuser_profiles.profiles import SingleuserProfiles
 
@@ -303,3 +306,11 @@ c.KubeSpawner.pvc_name_template = '%s-nb-{username}-pvc' % os.environ['JUPYTERHU
 c.KubeSpawner.volumes = [dict(name='data', persistentVolumeClaim=dict(claimName=c.KubeSpawner.pvc_name_template))]
 c.KubeSpawner.volume_mounts = [dict(name='data', mountPath='/opt/app-root/src')]
 c.KubeSpawner.user_storage_class = os.environ.get("JUPYTERHUB_STORAGE_CLASS", c.KubeSpawner.user_storage_class)
+
+
+c.JupyterHub.authenticator_class = AzureAdOAuthenticator
+c.Application.log_level = 'DEBUG'
+c.AzureAdOAuthenticator.tenant_id = os.environ.get('AAD_TENANT_ID')
+c.AzureAdOAuthenticator.oauth_callback_url = 'http://{your-domain}/hub/oauth_callback'
+c.AzureAdOAuthenticator.client_id = '{AAD-APP-CLIENT-ID}'
+c.AzureAdOAuthenticator.client_secret = '{AAD-APP-CLIENT-SECRET}'
